@@ -1,0 +1,8 @@
+version: "3.3"
+services:
+  b-hunters-dirsearch:
+    build: ./
+    volumes:
+    - /root/B-Hunter/B-Hunter-main/config/b-hunters.ini:/etc/b-hunters/b-hunters.ini
+    # env_file:
+    #   - ./.env
