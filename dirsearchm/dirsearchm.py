@@ -71,15 +71,14 @@ class dirsearchm(BHunters):
                         if not ((status == 302 and "/etc/passwd" in pathurl) or ("favicon.ico" in pathurl) or (status != 302 and "google.com" in pathurl)) :
                             if status !=301:
                                 result.append(fuzz)
-                        
-                    
+                os.remove(outputfile)
+
         except Exception as e:
             self.log.error("Error happened with direseach")
             self.log.error(e)
 
             raise Exception(e)
 
-        os.remove(outputfile)
         return result,result403,newurls
                 
     def scan(self,url):        
