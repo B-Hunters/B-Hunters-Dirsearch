@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from b_hunters.bhunter import BHunters
 from karton.core import Task
 import re
+import os
 def split_url(url):
     parsed_url = urlparse(url)
     scheme = parsed_url.scheme
@@ -52,11 +53,15 @@ class dirsearchm(BHunters):
 
         try:
             try:
-                output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","4","--recursion-status","200-403","--crawl","-t","150"],capture_output=True,text=True,timeout=1200)  # 20 minutes timeout
+                if os.getenv("deepscan","False") == "True":
+                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","2","--recursion-status","200-403","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
+                else:
+                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
             except subprocess.TimeoutExpired:
                 self.log.warning(f"Dirsearch process timed out for URL: {url}")
             if os.path.exists(outputfile):
                 with open(outputfile, "r") as file:
+                    
                     data = json.load(file)
                 for i in data["results"]:
                     status=i['status']
@@ -86,7 +91,13 @@ class dirsearchm(BHunters):
         return result,result403,newurls
         
     def process(self, task: Task) -> None:
-        url = task.payload["data"]
+        source = task.payload["source"]
+        url =task.payload["subdomain"]
+        # if source == "producer":
+        #     url = task.payload_persistent["domain"]
+        # else:
+        #     url = task.payload["data"]
+        
         self.log.info("Starting processing new url")
         domain = re.sub(r'^https?://', '', url)
         domain = domain.rstrip('/')
@@ -116,6 +127,7 @@ class dirsearchm(BHunters):
                 newurl_task = Task(
                         {"type": "path", "stage": "new"},
                         payload={"data": i,
+                        "subdomain":domain,
                         "source":"dirsearch"
                         }
                     )
