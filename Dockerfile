@@ -1,5 +1,5 @@
 FROM python:3.10-slim
-RUN pip install --no-cache-dir b-hunters==1.0.14 dirsearch
+RUN pip install --no-cache-dir b-hunters==1.1.0 dirsearch
 WORKDIR /app/service
 COPY dirsearchm /app/service/dirsearchm
 CMD [ "python", "-m", "dirsearchm" ]
