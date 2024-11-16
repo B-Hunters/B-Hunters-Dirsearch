@@ -28,6 +28,6 @@ docker run  -e deepscan=False -e max_threads=400 -v $(pwd)/b-hunters.ini:/etc/b-
 ## How it works
 
 B-Hunters-Dirsearch receives the Paths from different B-Hunters modules 
-![B-Hunters_Dirsearch](https://i.imgur.com/ReVG3rp.png)
+![B-Hunters_Dirsearch](https://i.imgur.com/GG3Jxc0.png)
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bormaa)
