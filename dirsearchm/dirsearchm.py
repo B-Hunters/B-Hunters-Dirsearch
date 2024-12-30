@@ -7,6 +7,8 @@ from b_hunters.bhunter import BHunters
 from karton.core import Task
 import re
 import os
+from bson.objectid import ObjectId
+
 def split_url(url):
     parsed_url = urlparse(url)
     scheme = parsed_url.scheme
@@ -54,7 +56,7 @@ class dirsearchm(BHunters):
         try:
             try:
                 if os.getenv("deepscan","False") == "True":
-                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","2","--recursion-status","200-403","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
+                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","4","--recursion-status","200-403","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
                 else:
                     output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
             except subprocess.TimeoutExpired:
@@ -74,8 +76,8 @@ class dirsearchm(BHunters):
                         result403.append({"status":status,"pathurl":pathurl,"lengrh":length})
                     else:
                         if not ((status == 302 and "/etc/passwd" in pathurl) or ("favicon.ico" in pathurl) or (status != 302 and "google.com" in pathurl)) :
-                            if status !=301:
-                                result.append(fuzz)
+                            # if status !=301:
+                            result.append(fuzz)
                 os.remove(outputfile)
 
         except Exception as e:
@@ -102,24 +104,17 @@ class dirsearchm(BHunters):
         domain = re.sub(r'^https?://', '', url)
         domain = domain.rstrip('/')
         self.log.info(domain)
+        report_id=task.payload_persistent["report_id"]    
 
         self.update_task_status(domain,"Started")
         try:
             result,result403,newurls=self.scan(url)
-            collection=self.db["domains"]
+            self.waitformongo()
+            collection=self.db["reports"]
             if result !=[]:
                 self.send_discord_webhook(f"{self.identity} Results for {domain}","\n".join(result),"main")
                 if self.db.client.is_primary:
-                    update_result = collection.update_one({"Domain": domain}, {'$push': {'Paths': result, 'Paths403': result403}})
-                    if update_result.modified_count == 0:
-                        self.log.warning(f"Update failed for domain {domain}. Document not found or no changes made.")
-                        # Optionally, you can check if the document exists
-                        if collection.count_documents({"Domain": domain}) == 0:
-                            self.log.error(f"Document for domain {domain} does not exist in the collection.")
-                        else:
-                            self.log.info(f"Document exists for {domain}, but no changes were made. Possibly duplicate data.")
-                    else:
-                        self.log.info(f"Successfully updated document for domain {domain}")
+                    update_result = collection.update_one({ "_id": ObjectId(report_id)}, {'$push': {'Paths': result, 'Paths403': result403}})
                 else:
                     raise Exception("MongoDB connection is not active. Update operation aborted.")
 
