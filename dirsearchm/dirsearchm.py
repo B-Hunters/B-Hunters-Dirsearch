@@ -47,7 +47,17 @@ class dirsearchm(BHunters):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-    def dirsearchcommand(self,url):
+    def header_args(self,headers):
+        """The arguments that give dirsearch the session headers.
+
+        Dirsearch takes them as ``-H "name: value"`` and sends them
+        with every request it makes.
+        """
+        args=[]
+        for name,value in headers.items():
+            args += ["-H", f"{name}: {value}"]
+        return args
+    def dirsearchcommand(self,url,headers):
         result=[]
         result403=[]
         newurls=[]
@@ -56,9 +66,9 @@ class dirsearchm(BHunters):
         try:
             try:
                 if os.getenv("deepscan","False") == "True":
-                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","4","--recursion-status","200-403","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
+                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-r","--max-recursion-depth","4","--recursion-status","200-403","-t",os.getenv("max_threads","400")]+self.header_args(headers),capture_output=True,text=True,timeout=3600)
                 else:
-                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-t",os.getenv("max_threads","400")],capture_output=True,text=True,timeout=3600)  
+                    output = subprocess.run(["dirsearch","-x","404,429,503,502,406,520,400,409,500","-u",url,"--random-agent","--crawl","-o",outputfile,"--format","json","-t",os.getenv("max_threads","400")]+self.header_args(headers),capture_output=True,text=True,timeout=3600)
             except subprocess.TimeoutExpired:
                 self.log.warning(f"Dirsearch process timed out for URL: {url}")
             if os.path.exists(outputfile):
@@ -88,8 +98,8 @@ class dirsearchm(BHunters):
 
         return result,result403,newurls
                 
-    def scan(self,url):        
-        result,result403,newurls=self.dirsearchcommand(url)
+    def scan(self,url,headers):
+        result,result403,newurls=self.dirsearchcommand(url,headers)
         return result,result403,newurls
         
     def process(self, task: Task) -> None:
@@ -108,7 +118,8 @@ class dirsearchm(BHunters):
 
         self.update_task_status(domain,"Started")
         try:
-            result,result403,newurls=self.scan(url)
+            headers=self.auth_headers(task)
+            result,result403,newurls=self.scan(url,headers)
             self.waitformongo()
             collection=self.db["reports"]
             if result !=[]:
